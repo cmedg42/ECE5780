@@ -65,13 +65,72 @@ int main(void)
   HAL_Init();
   SystemClock_Config();
 	
+	//gpioc, alternate functions for usart3
+	RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
+
+	GPIOC->AFR[0] |= (1<<16 | 1<<20);
+	GPIOC->MODER |= (1<<9 | 1<<11);
+	
+	GPIOC->MODER |= (1<<12 | 1<<14 | 1<<16 | 1<<18);
+	GPIOC->OTYPER &= ~(1<<6 | 1<<7 | 1<<8 | 1<<9);
+	GPIOC->OSPEEDR &= ~(1<<12 | 1<<14 | 1<<16 | 1<<18);
+	GPIOC->PUPDR &= ~(1<<12 | 1<<13 | 1<<14 | 1<<15 | 1<<16 | 1<<17 | 1<<18 | 1<<19);
+	GPIOC->ODR |= (1<<9);
+
+	
+	//enable usart3
+	RCC->APB1ENR |= RCC_APB1ENR_USART3EN;
+	
+	//set BAUD to 115200 bits/s
+	//BRR of 70 gives error of -0.8%
+	USART3->BRR = (HAL_RCC_GetHCLKFreq() / 115200)+1;//+1; //69 + 1
+	
+	//USART3->CR1 |= 1<<5;
+	//enable transmit/recieve/enable periph
+	USART3->CR1 |= (1<<0 | 1<<1 | 1<<2 | 1<<3 ); //maybe get rid of bit 1
 	
 	
-  while (1)
-  {
-  }
+  while (1){
+		//char myletter = 'w';
+		//transmitString("Howdy!>>");
+		while (!((USART3->ISR)  & 1<<5)){;}//recieve reg is empty
+		char c = USART3->RDR;
+		transmitChar(c);
+		transmitChar(' ');
+			switch(c){
+				case 'r':
+				GPIOC->ODR ^= 1<<6;
+				break;
+				case 'g':
+					GPIOC->ODR ^= (1<<9);
+				break;
+				case 'b':
+					GPIOC->ODR ^= (1<<7);
+				break;
+				case 'o':
+					GPIOC->ODR ^= (1<<8);
+				break;
+				default: transmitString("ERROR! ");break;
+			}
+				
+		//GPIOC->ODR ^= 1<<9;
+		//HAL_Delay(400);
+	}
 }
 
+void transmitChar(char c){
+	//GPIOC->ODR ^= 1<<8;
+	while (!((USART3->ISR) & (1<<6))){;}
+	USART3->TDR = c;
+}
+
+void transmitString(char* s){
+	uint32_t i = 0;
+	while (s[i] != '\0'){
+		transmitChar(s[i]);
+		i = i+1;
+	}
+}
 /**
   * @brief System Clock Configuration
   * @retval None

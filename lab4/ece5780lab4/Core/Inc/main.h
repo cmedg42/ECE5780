@@ -51,7 +51,8 @@ extern "C" {
 
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
-
+void transmitChar(char c);
+void transmitString(char* s);
 /* USER CODE BEGIN EFP */
 
 /* USER CODE END EFP */
