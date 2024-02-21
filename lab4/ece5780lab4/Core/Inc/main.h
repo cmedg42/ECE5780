@@ -53,6 +53,7 @@ extern "C" {
 void Error_Handler(void);
 void transmitChar(char c);
 void transmitString(char* s);
+void USART3_4_IRQHandler(void);
 /* USER CODE BEGIN EFP */
 
 /* USER CODE END EFP */

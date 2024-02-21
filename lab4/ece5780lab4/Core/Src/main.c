@@ -19,42 +19,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
-
-/* USER CODE END Includes */
-
-/* Private typedef -----------------------------------------------------------*/
-/* USER CODE BEGIN PTD */
-
-/* USER CODE END PTD */
-
-/* Private define ------------------------------------------------------------*/
-/* USER CODE BEGIN PD */
-
-/* USER CODE END PD */
-
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
-
-/* USER CODE END PM */
-
-/* Private variables ---------------------------------------------------------*/
-
-/* USER CODE BEGIN PV */
-
-/* USER CODE END PV */
-
-/* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-/* USER CODE BEGIN PFP */
-
-/* USER CODE END PFP */
-
-/* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
-
-/* USER CODE END 0 */
+volatile char usartRecieved = 0;
+volatile uint32_t usartFlag = 0;
 
 /**
   * @brief  The application entry point.
@@ -75,8 +42,7 @@ int main(void)
 	GPIOC->OTYPER &= ~(1<<6 | 1<<7 | 1<<8 | 1<<9);
 	GPIOC->OSPEEDR &= ~(1<<12 | 1<<14 | 1<<16 | 1<<18);
 	GPIOC->PUPDR &= ~(1<<12 | 1<<13 | 1<<14 | 1<<15 | 1<<16 | 1<<17 | 1<<18 | 1<<19);
-	GPIOC->ODR |= (1<<9);
-
+	GPIOC->ODR |= (1<<9 | 1<<8 | 1<<7 | 1<<6);
 	
 	//enable usart3
 	RCC->APB1ENR |= RCC_APB1ENR_USART3EN;
@@ -85,37 +51,139 @@ int main(void)
 	//BRR of 70 gives error of -0.8%
 	USART3->BRR = (HAL_RCC_GetHCLKFreq() / 115200)+1;//+1; //69 + 1
 	
+	NVIC_EnableIRQ(USART3_4_IRQn);
+	NVIC_SetPriority(USART3_4_IRQn, 0);
+	
 	//USART3->CR1 |= 1<<5;
 	//enable transmit/recieve/enable periph
+	USART3->CR1 |= 1<<5; //RX NE Interrupt enable;
 	USART3->CR1 |= (1<<0 | 1<<1 | 1<<2 | 1<<3 ); //maybe get rid of bit 1
 	
 	
   while (1){
+		//transmitChar('t');
+		transmitString("CMD>");
+		while (usartFlag == 0){;}//will exit once the interrupt happens. 
+		char color = usartRecieved;
+		usartFlag = 0;
+
+		transmitChar(color);
+		GPIOC->ODR ^= 1<<9;
+		while (usartFlag == 0){;}//will exit once the interrupt happens. 
+		char number = usartRecieved;
+		usartFlag = 0;
+		transmitChar(number);
+		GPIOC->ODR ^= 1<<9;
+
+		//oh hey look! a nasty switch-inside-switch! this could be done a whole lot better!
+		switch(color){
+			case 'r': //--------------red
+				//
+			  switch(number){
+					case '0':
+						GPIOC->ODR &= ~(1<<6); 
+						break;
+					case '1':
+						GPIOC->ODR |= (1<<6);
+						break;
+					case '2':
+						GPIOC->ODR ^= (1<<6);
+						break;
+					default: transmitString("<ERROR! Unrecognized command! ");
+					break;
+				}
+				//
+				break;
+			case 'g': //----------green
+				//
+				switch(number){
+					case '0':
+						GPIOC->ODR &= ~(1<<9); 
+						break;
+					case '1':
+						GPIOC->ODR |= (1<<9);
+						break;
+					case '2':
+						GPIOC->ODR ^= (1<<9);
+						break;
+					default: transmitString("<ERROR! Unrecognized command! ");
+					break;
+				}
+				//
+				break;
+			case 'b': //-----------blue
+				//
+				switch(number){
+					case '0':
+						GPIOC->ODR &= ~(1<<7); 
+						break;
+					case '1':
+						GPIOC->ODR |= (1<<7);
+						break;
+					case '2':
+						GPIOC->ODR ^= (1<<7);
+						break;
+					default: transmitString("<ERROR! Unrecognized command! ");
+					break;
+				}
+				//
+				break;
+			case 'o': //-------------orange
+				//
+				switch(number){
+					case '0':
+						GPIOC->ODR &= ~(1<<8); 
+						break;
+					case '1':
+						GPIOC->ODR |= (1<<8);
+						break;
+					case '2':
+						GPIOC->ODR ^= (1<<8);
+						break;
+					default: transmitString("<ERROR! Unrecognized command! ");
+					break;
+				}
+				//
+				break;
+			default: //-------------------unrecognized command
+				transmitString("<ERROR! Unrecognized color! "); 
+				break;
+		}
+			
+		//OLD CODE FOR REFERENCE BELOW	
+		
 		//char myletter = 'w';
 		//transmitString("Howdy!>>");
-		while (!((USART3->ISR)  & 1<<5)){;}//recieve reg is empty
-		char c = USART3->RDR;
-		transmitChar(c);
-		transmitChar(' ');
-			switch(c){
-				case 'r':
-				GPIOC->ODR ^= 1<<6;
-				break;
-				case 'g':
-					GPIOC->ODR ^= (1<<9);
-				break;
-				case 'b':
-					GPIOC->ODR ^= (1<<7);
-				break;
-				case 'o':
-					GPIOC->ODR ^= (1<<8);
-				break;
-				default: transmitString("ERROR! ");break;
-			}
+//		while (!((USART3->ISR)  & 1<<5)){;}//recieve reg is empty
+//		char c = USART3->RDR;
+//		transmitChar(c);
+//		transmitChar(' ');
+//			switch(c){
+//				case 'r':
+//				GPIOC->ODR ^= 1<<6;
+//				break;
+//				case 'g':
+//					GPIOC->ODR ^= (1<<9);
+//				break;
+//				case 'b':
+//					GPIOC->ODR ^= (1<<7);
+//				break;
+//				case 'o':
+//					GPIOC->ODR ^= (1<<8);
+//				break;
+//				default: transmitString("ERROR! ");break;
+//			}
 				
 		//GPIOC->ODR ^= 1<<9;
 		//HAL_Delay(400);
 	}
+}
+
+
+void USART3_4_IRQHandler(void){
+	GPIOC->ODR ^= 1<<9;
+	usartRecieved = USART3->RDR;
+	usartFlag = 1;
 }
 
 void transmitChar(char c){
