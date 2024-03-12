@@ -65,6 +65,30 @@ int main(void)
   HAL_Init();
 	SystemClock_Config();
 
+	RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
+	RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
+	
+	//pin b11
+	GPIOB->MODER |= (1<<23 || 0<<22); //alternate function mode for pin B11
+	GPIOB->OTYPER |= (1<<11);//open drain output on B11
+	GPIOB->AFR[1] |= (1<<12); //set pin B11 to AF 1 (I2C2_SDA)
+	
+	//pin b13
+	GPIOB->MODER |= (1<<27); //alternate function mode for pin b13
+	GPIOB->OTYPER |= (1<<13);//open drain B13
+	GPIOB->AFR[1] |= (1<<22 | 1<<20);//AF5 for pin b13 (i2c2_SCL)
+	
+	//pin b14
+	GPIOB->MODER |= (1<<28);//output mode
+		//pushpull is default
+	GPIOB->ODR |= (1<<14);//initialize high
+	
+	//pin PC0
+	GPIOC->MODER |= (1<<0); //PC0 output mode
+		//pushpull is default
+	GPIOC->ODR |= (1<<0);//initialize high
+	
+	
   while (1)
   {
 		
