@@ -60,6 +60,147 @@ void SystemClock_Config(void);
   * @brief  The application entry point.
   * @retval int
   */
+	
+int doublei2c(char reg, volatile int16_t* read){ //collects two nums
+	
+	I2C2->CR2 &= ~((0x3FF << 0) | (0x7F << 16));
+	I2C2->CR2 |= (1<<16) //numbytes == 1
+		| (0x69<<1); //slave address = 0x69
+	I2C2->CR2 &= ~(1<<10); //write transfer (bit 10 is 0)
+	I2C2->CR2 |= (1<<13);//start bit
+	while(1){ //wait for TXIS
+		//I2C_ISR_TXIS
+		//GPIOC->ODR |= (1<<8);
+		if ((I2C2->ISR & (1<<1))){ break;}
+		else if (I2C2->ISR & I2C_ISR_NACKF) {
+			//error
+			return 1;
+		}
+	}
+	
+	
+	I2C2->TXDR = reg; //addr
+	while (1){
+
+		if (I2C2->ISR & I2C_ISR_TC) {break;} //wait until TC flag is set
+	}
+	
+	//GPIOC->ODR |= (1<<7);//blue
+
+	
+	//READ NOW. 
+	I2C2->CR2 &= ~((0x3FF << 0) | (0x7F << 16));
+	I2C2->CR2 |= (2<<16) //numbytes == 1
+		| (0x69<<1); //slave address = 0x6B
+	I2C2->CR2 |= (1<<10); //READ transfer (bit 10 is 1)
+	I2C2->CR2 |= (1<<13);//start bit set
+	
+	int8_t h, l;
+  int16_t result;
+	for(uint32_t i = 0; i < 2; i++){
+		while (1){
+			if (I2C2->ISR & I2C_ISR_RXNE){break;}
+			else if (I2C2->ISR & I2C_ISR_NACKF) {
+				//error
+				return 1;
+			}
+		}
+		
+		if (i == 0){
+			l = I2C2->RXDR;
+		}else{
+			h = I2C2->RXDR;
+		}
+	}
+	
+	while (1){
+		if (I2C2->ISR & I2C_ISR_TC) {break;} //wait until TC flag is set
+	}
+	I2C2->CR2 |= (1<<14);//STOP
+	result = (h << 8) | (l);
+	*(read) = result;
+	return 0;//no error!
+}
+
+int i2ctransfer(char reg, char info , volatile char* read){ //slave address = 0x69
+	I2C2->CR2 &= ~((0x3FF << 0) | (0x7F << 16));
+	I2C2->CR2 |= (2<<16) //numbytes == 1
+		| (0x69<<1); //slave address = 0x69
+	I2C2->CR2 &= ~(1<<10); //write transfer (bit 10 is 0)
+	I2C2->CR2 |= (1<<13);//start bit
+	while(1){ //wait for TXIS
+		//I2C_ISR_TXIS
+		//GPIOC->ODR |= (1<<8);
+		if ((I2C2->ISR & (1<<1))){ break;}
+		else if (I2C2->ISR & I2C_ISR_NACKF) {
+			//error
+			return 1;
+		}
+	}
+	
+	I2C2->TXDR = reg; //addr
+	/*while (1){
+		if (I2C2->ISR & I2C_ISR_TC) {break;} //wait until TC flag is set
+	}*/ //COMMENTED OUT
+	//TESTESTESTEST
+	while(1){ //wait for TXIS
+		//I2C_ISR_TXIS
+		//GPIOC->ODR |= (1<<8);
+		if ((I2C2->ISR & (1<<1))){ break;}
+		else if (I2C2->ISR & I2C_ISR_NACKF) {
+			//error
+			return 1;
+		}
+	}
+	I2C2->TXDR = info;
+	while (1){
+		if (I2C2->ISR & I2C_ISR_TC) {break;} //wait until TC flag is set
+	}
+	//TESTESTESTEST
+	//now it is time to read the response 
+	
+	I2C2->CR2 &= ~((0x3FF << 0) | (0x7F << 16));
+	I2C2->CR2 |= (1<<16) //numbytes == 1
+		| (0x69<<1); //slave address = 0x6B
+	I2C2->CR2 |= (1<<10); //READ transfer (bit 10 is 1)
+	I2C2->CR2 |= (1<<13);//start bit set
+	while (1){
+
+		if (I2C2->ISR & I2C_ISR_RXNE){break;}
+		else if (I2C2->ISR & I2C_ISR_NACKF) {
+			//error
+			return 1;
+		}
+	}
+	
+
+	while (1){ 
+		if (I2C2->ISR & I2C_ISR_TC){break;}
+	}
+	
+	*(read) = I2C2->RXDR;
+	I2C2->CR2 |= (1<<14);//STOP
+	
+	
+	
+	
+	
+	return 0;
+}
+
+void initleds(){
+	GPIOC->MODER |= (1<<12 | 1<<14 | 1<<16 | 1<<18);
+	GPIOC->OTYPER &= ~(1<<6 | 1<<7 | 1<<8 | 1<<9);
+	GPIOC->OSPEEDR &= ~(1<<12 | 1<<14 | 1<<16 | 1<<18);
+	GPIOC->PUPDR &= ~(1<<12 | 1<<13 | 1<<14 | 1<<15 | 1<<16 | 1<<17 | 1<<18 | 1<<19);
+}
+
+void initgyro(){
+	//gyro
+	GPIOC->BSRR = (1<<0);
+  
+}
+
 int main(void)
 {
   HAL_Init();
@@ -67,9 +208,10 @@ int main(void)
 
 	RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
 	RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
+	initleds();
 	
 	//pin b11
-	GPIOB->MODER |= (1<<23 || 0<<22); //alternate function mode for pin B11
+	GPIOB->MODER |= (1<<23 | 0<<22); //alternate function mode for pin B11
 	GPIOB->OTYPER |= (1<<11);//open drain output on B11
 	GPIOB->AFR[1] |= (1<<12); //set pin B11 to AF 1 (I2C2_SDA)
 	
@@ -83,17 +225,63 @@ int main(void)
 		//pushpull is default
 	GPIOB->ODR |= (1<<14);//initialize high
 	
+	GPIOB->PUPDR |= (1<<22 | 1<<26);
+	
 	//pin PC0
 	GPIOC->MODER |= (1<<0); //PC0 output mode
 		//pushpull is default
 	GPIOC->ODR |= (1<<0);//initialize high
 	
 	
-  while (1)
+	RCC->APB1ENR |= RCC_APB1ENR_I2C2EN;
+
+	//i2c2
+	I2C2->TIMINGR = (1<< 28)//PRESCALER == 1
+		| (0x4 << 20) // SCLDEL == 0x4 
+		| (0x2<<16) //SDADEL ==  0x2
+		| (0xF<<8)//SCLH == 0xF
+		| (0x13<<0);//8SCLL == 0x13
+		//| (I2C2->TIMINGR & (0xF << 24)); //reserved bits
+	I2C2->CR1 |= (1<<0); //PE bit
+
+	initgyro();
+	
+	volatile char read, info, reg;
+
+	//i2ctransfer(0x0F, 0x00, &read);
+	//if (read == 0xD3){
+				//GPIOC->ODR |= (1<<7);//blue
+
+	//} else {
+				//GPIOC->ODR |= (1<<9); //green
+	//}
+	
+
+	reg = 0x20;
+	info = 0x0B; //00001011 <- PD ,x+y en
+	
+	i2ctransfer(reg, info, &read);//reg info read
+	
+	//////////////////////////////////
+	//main loop
+	while (1)
   {
-		
+		HAL_Delay(100);
+		volatile int16_t x, y;
+		//collect x
+		doublei2c(0xA8, &x); //reg read
+		//collect y
+		doublei2c(0xAA, &y);
+		//decide lights
+		const int16_t thresh = 0x01FF;
+		if (x < 0-thresh) {GPIOC->ODR |= (1<<8);} else {GPIOC->ODR &= ~(1<<8);} //orange
+		if (y < 0-thresh) {GPIOC->ODR |= (1<<7);} else {GPIOC->ODR &= ~(1<<7);} //blue
+		if (y > thresh) {GPIOC->ODR |= (1<<6);} else {GPIOC->ODR &= ~(1<<6);} //red
+		if (x > thresh) {GPIOC->ODR |= (1<<9);} else {GPIOC->ODR &= ~(1<<9);} //green
   }
 }
+
+
 
 /**
   * @brief System Clock Configuration
