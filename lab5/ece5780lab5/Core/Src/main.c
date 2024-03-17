@@ -78,15 +78,11 @@ int doublei2c(char reg, volatile int16_t* read){ //collects two nums
 		}
 	}
 	
-	
 	I2C2->TXDR = reg; //addr
 	while (1){
 
 		if (I2C2->ISR & I2C_ISR_TC) {break;} //wait until TC flag is set
 	}
-	
-	//GPIOC->ODR |= (1<<7);//blue
-
 	
 	//READ NOW. 
 	I2C2->CR2 &= ~((0x3FF << 0) | (0x7F << 16));
@@ -139,10 +135,7 @@ int i2ctransfer(char reg, char info , volatile char* read){ //slave address = 0x
 	}
 	
 	I2C2->TXDR = reg; //addr
-	/*while (1){
-		if (I2C2->ISR & I2C_ISR_TC) {break;} //wait until TC flag is set
-	}*/ //COMMENTED OUT
-	//TESTESTESTEST
+	
 	while(1){ //wait for TXIS
 		//I2C_ISR_TXIS
 		//GPIOC->ODR |= (1<<8);
@@ -156,7 +149,6 @@ int i2ctransfer(char reg, char info , volatile char* read){ //slave address = 0x
 	while (1){
 		if (I2C2->ISR & I2C_ISR_TC) {break;} //wait until TC flag is set
 	}
-	//TESTESTESTEST
 	//now it is time to read the response 
 	
 	I2C2->CR2 &= ~((0x3FF << 0) | (0x7F << 16));
@@ -180,11 +172,7 @@ int i2ctransfer(char reg, char info , volatile char* read){ //slave address = 0x
 	
 	*(read) = I2C2->RXDR;
 	I2C2->CR2 |= (1<<14);//STOP
-	
-	
-	
-	
-	
+
 	return 0;
 }
 
